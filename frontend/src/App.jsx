@@ -33,7 +33,9 @@ const ProtectedDashboardRoute = () => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (user.role !== 'guard' && user.role !== 'admin') {
+
+  const allowedRoles = ['guard', 'admin', 'teacher'];
+  if (!allowedRoles.includes(user.role)) {
     alert('Tài khoản học sinh không có quyền truy cập trung tâm giám sát!');
     return <Navigate to="/report" replace />;
   }

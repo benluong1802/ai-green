@@ -12,11 +12,12 @@ from google.genai import types
 from database import engine, get_db, SessionLocal
 import models
 from sqlalchemy.orm import Session
-from fastapi import Depends
+from fastapi import Depends,status
 from pydantic import BaseModel
 models.Base.metadata.create_all(bind=engine)
 import os
 from dotenv import load_dotenv
+from typing import Literal
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -41,7 +42,11 @@ class StudentRegisterRequest(BaseModel):
     phone: str
     full_name: str
     password: str
-
+class StaffCreateRequest(BaseModel):
+    phone: str
+    full_name: str
+    password: str
+    role: Literal["guard", "teacher"]
 class LoginRequest(BaseModel):
     phone: str
     password: str
@@ -224,3 +229,35 @@ def reset_database(db: Session = Depends(get_db)):
     db.query(models.Report).delete()
     db.commit()
     return {"message": "Đã xóa sạch toàn bộ dữ liệu báo cáo!"}
+@app.post("/api/auth/create-staff", status_code=status.HTTP_201_CREATED)
+def create_staff_account(payload: StaffCreateRequest, db: Session = Depends(get_db)):
+    # 1. Kiểm tra số điện thoại đã tồn tại chưa
+    existing_user = db.query(models.User).filter(models.User.phone == payload.phone).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Số điện thoại này đã được đăng ký tài khoản."
+        )
+
+    # 2. Khởi tạo tài khoản nhân sự mới
+    new_staff = models.User(
+        id=str(uuid.uuid4()),
+        phone=payload.phone.strip(),
+        full_name=payload.full_name.strip(),
+        password=payload.password,  # Lưu ý: Nên dùng passlib/bcrypt hash nếu dự án có sẵn
+        role=payload.role
+    )
+
+    db.add(new_staff)
+    db.commit()
+    db.refresh(new_staff)
+
+    return {
+        "message": f"Tạo tài khoản {payload.role} thành công",
+        "user": {
+            "id": new_staff.id,
+            "phone": new_staff.phone,
+            "full_name": new_staff.full_name,
+            "role": new_staff.role
+        }
+    }

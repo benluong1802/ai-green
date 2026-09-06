@@ -10,7 +10,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-
+  const staffRoles = ['guard', 'admin', 'teacher'];
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -31,11 +31,11 @@ export default function Auth() {
         const user = res.data.user;
         localStorage.setItem('user', JSON.stringify(user));
 
-        // Tự động điều hướng theo Role
-        if (user.role === 'guard' || user.role === 'admin') {
-          navigate('/dashboard'); // Bảo vệ tự vào Dashboard
+        // Tự động điều hướng theo Role (sử dụng đúng biến user)
+        if (staffRoles.includes(user.role)) {
+          navigate('/dashboard');
         } else {
-          navigate('/report');    // Học sinh tự vào màn hình Báo cáo
+          navigate('/report');
         }
       }
     } catch (err) {
