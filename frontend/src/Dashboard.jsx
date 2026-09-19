@@ -112,7 +112,7 @@ export default function Dashboard() {
             onClick={() => setShowExportModal(true)}
             style={{
               padding: '8px 16px',
-              height:'44px',
+              height: '44px',
               backgroundColor: '#107c41',
               color: '#ffffff',
               border: 'none',
@@ -272,7 +272,12 @@ export default function Dashboard() {
               </div>
               <div className="modal-info-col">
                 <div style={{ marginBottom: 12 }}>{getEcoBadge(selectedReport.ecoscore)}</div>
-                <p><strong>Người báo cáo:</strong> {selectedReport.reporter_name || 'Học sinh ẩn danh'} {selectedReport.reporter_phone ? `(${selectedReport.reporter_phone})` : ''}</p>
+                <p>
+                  <strong>Người báo cáo:</strong> {selectedReport.reporter_name || 'Học sinh ẩn danh'}
+                  {selectedReport.reporter_phone && selectedReport.reporter_phone !== 'Không rõ'
+                    ? ` - SĐT: 0${selectedReport.reporter_phone}`
+                    : ''}
+                </p>
                 <p><strong>Loại vấn đề:</strong> {selectedReport.issue_group}</p>
                 <p><strong>Chi tiết:</strong> {selectedReport.issue_detail}</p>
                 <p><strong>Ghi chú từ học sinh:</strong> {selectedReport.description || 'Không có'}</p>
@@ -296,8 +301,8 @@ export default function Dashboard() {
         </div>
       )}
       {showExportModal && (
-        <div 
-          className="modal-backdrop" 
+        <div
+          className="modal-backdrop"
           onClick={() => setShowExportModal(false)}
           style={{
             position: 'fixed',
@@ -309,8 +314,8 @@ export default function Dashboard() {
             zIndex: 9999
           }}
         >
-          <div 
-            className="modal-box" 
+          <div
+            className="modal-box"
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: '#ffffff',
@@ -324,7 +329,7 @@ export default function Dashboard() {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Xuất báo cáo Excel</h3>
-              <button 
+              <button
                 onClick={() => setShowExportModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
               >
@@ -339,10 +344,10 @@ export default function Dashboard() {
             {/* Danh sách Radio Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
-                <input 
-                  type="radio" 
-                  name="exportPeriod" 
-                  value="week" 
+                <input
+                  type="radio"
+                  name="exportPeriod"
+                  value="week"
                   checked={exportPeriod === 'week'}
                   onChange={(e) => setExportPeriod(e.target.value)}
                   style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}
@@ -351,10 +356,10 @@ export default function Dashboard() {
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
-                <input 
-                  type="radio" 
-                  name="exportPeriod" 
-                  value="month" 
+                <input
+                  type="radio"
+                  name="exportPeriod"
+                  value="month"
                   checked={exportPeriod === 'month'}
                   onChange={(e) => setExportPeriod(e.target.value)}
                   style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}
@@ -363,10 +368,10 @@ export default function Dashboard() {
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
-                <input 
-                  type="radio" 
-                  name="exportPeriod" 
-                  value="all" 
+                <input
+                  type="radio"
+                  name="exportPeriod"
+                  value="all"
                   checked={exportPeriod === 'all'}
                   onChange={(e) => setExportPeriod(e.target.value)}
                   style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}

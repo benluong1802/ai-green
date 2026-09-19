@@ -23,6 +23,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from fastapi.responses import StreamingResponse
+from typing import Optional
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -335,3 +336,83 @@ def export_reports_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers
     )
+
+class StudentLoginRequest(BaseModel):
+    student_code: str
+
+@app.post("/api/auth/student-login")
+def student_login(req: StudentLoginRequest, db: Session = Depends(get_db)):
+    code = req.student_code.strip()
+    student = db.query(models.Student).filter(models.Student.student_code == code).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=404, 
+            detail="Mã số học sinh không tồn tại trong hệ thống trường!"
+        )
+
+    return {
+        "message": "Xác thực học sinh thành công!",
+        "user": {
+            "id": student.id,
+            "student_code": student.student_code,
+            "full_name": student.full_name,
+            "class_name": student.class_name,
+            "phone": student.phone or "",
+            "role": "student"
+        }
+    }
+@app.post("/api/reports")
+async def create_report(
+    coord_x: float = Form(...),
+    coord_y: float = Form(...),
+    description: str = Form(""),
+    reporter_name: str = Form("Học sinh"),
+    reporter_phone: str = Form(""),
+    image: Optional[UploadFile] = File(None),  # Cho phép không có ảnh
+    db: Session = Depends(get_db)
+):
+    image_url = "/uploads/default-report.png" # Ảnh mặc định khi báo cáo từ máy tính
+    issue_group = "Báo cáo từ máy tính trường"
+    issue_detail = description or "Học sinh báo cáo không kèm ảnh"
+    ecoscore = 2
+    ai_suggestion = "Cần bảo vệ hoặc lao công đến kiểm tra trực tiếp hiện trường."
+
+    # Nếu có ảnh (từ điện thoại gửi lên) thì mới phân tích Gemini
+    if image and image.filename:
+        file_ext = os.path.splitext(image.filename)[1] or ".jpg"
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        image_url = f"/uploads/{unique_filename}"
+
+        # Gọi Gemini phân tích ảnh
+        ai_res = analyze_image_with_gemini(file_path, description)
+        issue_group = ai_res.get("issue_group", issue_group)
+        issue_detail = ai_res.get("issue_detail", issue_detail)
+        ecoscore = ai_res.get("ecoscore", ecoscore)
+        ai_suggestion = ai_res.get("ai_suggestion", ai_suggestion)
+
+    new_report = models.Report(
+        id=str(uuid.uuid4()),
+        coord_x=coord_x,
+        coord_y=coord_y,
+        description=description,
+        reporter_name=reporter_name,
+        reporter_phone=reporter_phone,
+        image_url=image_url,
+        status="pending",
+        issue_group=issue_group,
+        issue_detail=issue_detail,
+        ecoscore=ecoscore,
+        ai_suggestion=ai_suggestion
+    )
+
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+
+    return {"message": "Báo cáo thành công!", "data": new_report}

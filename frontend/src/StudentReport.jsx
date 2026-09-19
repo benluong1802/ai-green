@@ -1,10 +1,16 @@
 import React, { useState, useRef } from 'react';
 import api from './api';
-import { Camera, MapPin, Send, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, MapPin, Send, ArrowRight, ArrowLeft, LogOut } from 'lucide-react';
 import './App.css';
 
 export default function App() {
-  const [step, setStep] = useState(1); // Quản lý bước 1 hoặc bước 2
+  const navigate = useNavigate();
+  // Kiểm tra nếu là máy tính / màn hình rộng > 768px
+  const isDesktop = window.innerWidth > 768;
+
+  // Máy tính thì nhảy thẳng vào bước 2, điện thoại thì bắt đầu từ bước 1
+  const [step, setStep] = useState(isDesktop ? 2 : 1);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [pin, setPin] = useState(null);
@@ -34,20 +40,39 @@ export default function App() {
       alert('Vui lòng chạm vào sơ đồ để chọn vị trí sự cố!');
       return;
     }
+
+    if (isDesktop && !description.trim()) {
+      alert('Vui lòng nhập mô tả sự cố!');
+      return;
+    }
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     setLoading(true);
+
     const formData = new FormData();
-    formData.append('image', image);
+    // Chỉ đính kèm file ảnh nếu có (học sinh dùng điện thoại chụp)
+    if (image) {
+      formData.append('image', image);
+    }
     formData.append('coord_x', pin.x.toFixed(2));
     formData.append('coord_y', pin.y.toFixed(2));
     formData.append('description', description);
-    formData.append('reporter_name', currentUser.full_name || 'Khách');
-    formData.append('reporter_phone', currentUser.phone || 'Không rõ');
+    formData.append('reporter_name', `${currentUser.full_name || 'Học sinh'} (${currentUser.class_name || '8/6'})`);
+    formData.append('reporter_phone', currentUser.phone || 'Học sinh');
+
     try {
       await api.post('/reports', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       alert('Đã gửi báo cáo thành công!');
+
+      // Nếu dùng trên máy tính công cộng: Tự động đăng xuất về trang đăng nhập
+      if (isDesktop) {
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
+
+      // Nếu dùng trên điện thoại cá nhân: Reset form về ban đầu
       setImage(null);
       setPreview(null);
       setPin(null);
@@ -61,11 +86,22 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
     <div className="mobile-container">
       <div className="header">
-        <h2>AI GreenMap</h2>
-        <p>Bước {step}/2: {step === 1 ? 'Chụp ảnh hiện trường' : 'Xác định vị trí trên sơ đồ'}</p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <h2>AI GreenMap</h2>
+        </div>
+        <p>
+          {isDesktop
+            ? 'Xác định vị trí sự cố trên sơ đồ trường'
+            : `Bước ${step}/2: ${step === 1 ? 'Chụp ảnh hiện trường' : 'Xác định vị trí trên sơ đồ'}`}
+        </p>
       </div>
 
       {step === 1 ? (
@@ -121,46 +157,74 @@ export default function App() {
           </div>
 
           <div className="form-group">
-            <label>Ghi chú thêm (không bắt buộc)</label>
+            <label>
+              {isDesktop ? (
+                <>
+                  Mô tả sự cố <span style={{ color: '#ef4444' }}>(Bắt buộc)</span>
+                </>
+              ) : (
+                'Ghi chú thêm (không bắt buộc)'
+              )}
+            </label>
             <input
               type="text"
               className="text-input"
-              placeholder="Ví dụ: Rác nhiều sau giờ ra chơi..."
+              required={isDesktop} // Tự động bật required nếu là máy tính
+              placeholder={
+                isDesktop
+                  ? 'Ví dụ: Thùng rác trước lớp 8/6 bị tràn, vòi nước rò rỉ...'
+                  : 'Ví dụ: Rác nhiều sau giờ ra chơi...'
+              }
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
-            {/* Nút Quay lại: khóa khi loading */}
-            <button
-              type="button"
-              className="submit-btn"
-              disabled={loading}
-              onClick={() => setStep(1)}
-              style={{
-                backgroundColor: '#757575',
-                flex: 1,
-                opacity: loading ? 0.6 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <ArrowLeft size={16} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Quay lại
-            </button>
+            {/* Nếu là điện thoại thì có nút Quay lại Bước 1, nếu là máy tính thì nút Huỷ/Đổi mã */}
+            {!isDesktop ? (
+              <button
+                type="button"
+                className="submit-btn"
+                disabled={loading}
+                onClick={() => setStep(1)}
+                style={{
+                  backgroundColor: '#757575',
+                  flex: 1,
+                  opacity: loading ? 0.6 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <ArrowLeft size={16} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Quay lại
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="submit-btn"
+                disabled={loading}
+                onClick={handleLogout}
+                style={{
+                  backgroundColor: '#4b5563',
+                  flex: 1,
+                  cursor: 'pointer'
+                }}
+              >
+                Đăng Xuất
+              </button>
+            )}
 
-            {/* Nút Gửi báo cáo: khóa khi loading hoặc chưa chấm ghim */}
             <button
               type="submit"
               className="submit-btn"
-              disabled={loading || !pin}
+              disabled={loading || !pin || (isDesktop && !description.trim())}
               style={{
                 flex: 2,
-                opacity: (loading || !pin) ? 0.6 : 1,
-                cursor: (loading || !pin) ? 'not-allowed' : 'pointer'
+                opacity: (loading || !pin || (isDesktop && !description.trim())) ? 0.6 : 1,
+                cursor: (loading || !pin || (isDesktop && !description.trim())) ? 'not-allowed' : 'pointer'
               }}
             >
               <Send size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-              {loading ? 'Đang phân tích & gửi...' : 'Gửi báo cáo'}
+              {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
             </button>
           </div>
         </form>
