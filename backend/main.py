@@ -12,12 +12,17 @@ from google.genai import types
 from database import engine, get_db, SessionLocal
 import models
 from sqlalchemy.orm import Session
-from fastapi import Depends,status
+from fastapi import Depends,status,Query
 from pydantic import BaseModel
 models.Base.metadata.create_all(bind=engine)
 import os
 from dotenv import load_dotenv
 from typing import Literal
+import io
+import pandas as pd
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from fastapi.responses import StreamingResponse
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -261,3 +266,72 @@ def create_staff_account(payload: StaffCreateRequest, db: Session = Depends(get_
             "role": new_staff.role
         }
     }
+
+def get_now_vn():
+    return datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).replace(tzinfo=None)
+
+@app.get("/api/reports/export-excel")
+def export_reports_excel(
+    period: Literal["week", "month", "all"] = Query(
+        "week", 
+        description="Lọc theo khoảng thời gian: 'week' (7 ngày qua), 'month' (30 ngày qua), hoặc 'all'"
+    ),
+    db: Session = Depends(get_db)
+):
+    now = get_now_vn()
+    query = db.query(models.Report)
+
+    if period == "week":
+        start_date = now - timedelta(days=7)
+        query = query.filter(models.Report.created_at >= start_date)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+        query = query.filter(models.Report.created_at >= start_date)
+
+    reports = query.order_by(models.Report.created_at.desc()).all()
+
+    if not reports:
+        raise HTTPException(
+            status_code=404, 
+            detail="Không có báo cáo nào trong khoảng thời gian đã chọn để xuất file."
+        )
+
+    data = []
+    for r in reports:
+        data.append({
+            "Ngày báo cáo": r.created_at.strftime("%d/%m/%Y") if r.created_at else "",
+            "Giờ báo cáo": r.created_at.strftime("%H:%M:%S") if r.created_at else "",
+            "Người báo cáo": r.reporter_name or "Học sinh ẩn danh",
+            "Số điện thoại": r.reporter_phone or "",
+            "Nhóm sự cố": r.issue_group or "Chưa phân loại",
+            "Chi tiết sự cố": r.issue_detail or "",
+            "Điểm EcoScore": r.ecoscore if r.ecoscore is not None else "",
+            "Gợi ý xử lý (AI)": r.ai_suggestion or "",
+            "Mô tả của học sinh": r.description or "",
+            "Trạng thái": "Đã xử lý" if r.status == "resolved" else "Chờ xử lý"
+        })
+
+    df = pd.DataFrame(data)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Danh sách báo cáo")
+        
+        worksheet = writer.sheets["Danh sách báo cáo"]
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or "")) for cell in col)
+            col_letter = col[0].column_letter
+            worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+    output.seek(0)
+
+    filename = f"bao_cao_{period}_{now.strftime('%Y%m%d_%H%M%S')}.xlsx"
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}"
+    }
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers
+    )

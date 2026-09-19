@@ -5,12 +5,40 @@ import { Clock, RefreshCw, Eye, X, LogOut } from 'lucide-react';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  // Toàn bộ Hooks BẮT BUỘC nằm bên trong thân component
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' hoặc 'resolved'
+  const [activeTab, setActiveTab] = useState('pending');
+  const [exportPeriod, setExportPeriod] = useState('week');
+  const [showExportModal, setShowExportModal] = useState(false);
 
+  const handleExportExcel = async (period = 'week') => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const apiUrl = `${baseUrl}/api/reports/export-excel?period=${period}`;
+
+      const res = await fetch(apiUrl);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.detail || 'Không thể xuất dữ liệu!');
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bao_cao_${period}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Lỗi xuất Excel:', error);
+      alert('Đã xảy ra lỗi khi kết nối tới máy chủ!');
+    }
+  };
   const fetchReports = async () => {
     setLoading(true);
     try {
@@ -49,13 +77,11 @@ export default function Dashboard() {
     }
   };
 
-  // Thống kê số liệu
   const total = reports.length;
   const pending = reports.filter((r) => r.status === 'pending').length;
   const resolved = reports.filter((r) => r.status === 'resolved').length;
   const highPriority = reports.filter((r) => r.ecoscore === 3 && r.status === 'pending').length;
 
-  // Lọc theo Tab và sắp xếp ưu tiên EcoScore 3 -> 2 -> 1
   const filteredReports = reports
     .filter((r) => r.status === activeTab)
     .sort((a, b) => {
@@ -68,25 +94,43 @@ export default function Dashboard() {
     });
 
   const getEcoBadge = (score) => {
-    if (score === 3) return <span className="badge badge-red">🔴 Mức 3 (Ưu tiên cao)</span>;
+    if (score === 3) return <span className="badge badge-red">🔴 Mức 3 (Ưu tiên)</span>;
     if (score === 2) return <span className="badge badge-yellow">🟡 Mức 2 (Theo dõi)</span>;
     return <span className="badge badge-green">🟢 Mức 1 (Thấp)</span>;
   };
 
   return (
     <div className="dashboard-container">
-      {/* HEADER */}
       <header className="dashboard-header">
         <div>
           <h2>AI GreenMap - Trung Tâm Điều Hành Giám Sát</h2>
         </div>
 
-        {/* Bọc 2 nút vào chung 1 div để đứng sát nhau */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {/* <button className="btn-refresh" onClick={fetchReports} disabled={loading}>
-            <RefreshCw size={16} className={loading ? 'spin' : ''} />
-            {loading ? 'Đang cập nhật...' : 'Làm mới'}
-          </button> */}
+          {/* Nút mở popup Export */}
+          <button
+            onClick={() => setShowExportModal(true)}
+            style={{
+              padding: '8px 16px',
+              height:'44px',
+              backgroundColor: '#107c41',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0b5a2f')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#107c41')}
+          >
+            Xuất File
+          </button>
+
           <button className="btn-logout" onClick={handleLogout}>
             <LogOut size={16} />
             Đăng xuất
@@ -247,6 +291,126 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showExportModal && (
+        <div 
+          className="modal-backdrop" 
+          onClick={() => setShowExportModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+        >
+          <div 
+            className="modal-box" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              width: '420px',
+              padding: '20px 24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+              color: '#1f2937'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Xuất báo cáo Excel</h3>
+              <button 
+                onClick={() => setShowExportModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '14px', color: '#4b5563', marginBottom: '16px' }}>
+              Chọn khoảng thời gian báo cáo cần kết xuất dữ liệu:
+            </p>
+
+            {/* Danh sách Radio Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                <input 
+                  type="radio" 
+                  name="exportPeriod" 
+                  value="week" 
+                  checked={exportPeriod === 'week'}
+                  onChange={(e) => setExportPeriod(e.target.value)}
+                  style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}
+                />
+                <span><strong>7 ngày gần nhất</strong> (Theo tuần)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                <input 
+                  type="radio" 
+                  name="exportPeriod" 
+                  value="month" 
+                  checked={exportPeriod === 'month'}
+                  onChange={(e) => setExportPeriod(e.target.value)}
+                  style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}
+                />
+                <span><strong>30 ngày gần nhất</strong> (Theo tháng)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                <input 
+                  type="radio" 
+                  name="exportPeriod" 
+                  value="all" 
+                  checked={exportPeriod === 'all'}
+                  onChange={(e) => setExportPeriod(e.target.value)}
+                  style={{ width: '16px', height: '16px', accentColor: '#107c41', cursor: 'pointer' }}
+                />
+                <span><strong>Toàn bộ dữ liệu</strong> (Tất cả)</span>
+              </label>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowExportModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                Hủy
+              </button>
+
+              <button
+                onClick={async () => {
+                  await handleExportExcel(exportPeriod);
+                  setShowExportModal(false);
+                }}
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: '#107c41',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
+              >
+                Tải xuống
+              </button>
             </div>
           </div>
         </div>

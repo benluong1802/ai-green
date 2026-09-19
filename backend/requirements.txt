@@ -7,3 +7,5 @@ pillow
 python-dotenv
 python-multipart
 pydantic
+pandas
+openpyxl
