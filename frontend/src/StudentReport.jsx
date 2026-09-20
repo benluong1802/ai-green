@@ -181,7 +181,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
-            {/* Nếu là điện thoại thì có nút Quay lại Bước 1, nếu là máy tính thì nút Huỷ/Đổi mã */}
             {!isDesktop ? (
               <button
                 type="button"
@@ -191,11 +190,17 @@ export default function App() {
                 style={{
                   backgroundColor: '#757575',
                   flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  whiteSpace: 'nowrap', // Ngăn chữ rớt dòng làm phình to nút
+                  fontSize: '0.9rem',
+                  padding: '12px 8px',
                   opacity: loading ? 0.6 : 1,
                   cursor: loading ? 'not-allowed' : 'pointer'
                 }}
               >
-                <ArrowLeft size={16} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Quay lại
+                <ArrowLeft size={16} style={{ marginRight: 4, flexShrink: 0 }} /> Quay lại
               </button>
             ) : (
               <button
@@ -206,6 +211,12 @@ export default function App() {
                 style={{
                   backgroundColor: '#4b5563',
                   flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.9rem',
+                  padding: '12px 8px',
                   cursor: 'pointer'
                 }}
               >
@@ -218,12 +229,18 @@ export default function App() {
               className="submit-btn"
               disabled={loading || !pin || (isDesktop && !description.trim())}
               style={{
-                flex: 2,
+                flex: 1.6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                whiteSpace: 'nowrap',
+                fontSize: '0.9rem',
+                padding: '12px 8px',
                 opacity: (loading || !pin || (isDesktop && !description.trim())) ? 0.6 : 1,
                 cursor: (loading || !pin || (isDesktop && !description.trim())) ? 'not-allowed' : 'pointer'
               }}
             >
-              <Send size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              <Send size={16} style={{ marginRight: 6, flexShrink: 0 }} />
               {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
             </button>
           </div>
