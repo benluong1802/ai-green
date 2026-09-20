@@ -259,40 +259,63 @@ export default function Dashboard() {
       {/* POPUP CHI TIẾT SỰ CỐ */}
       {selectedReport && (
         <div className="modal-backdrop" onClick={() => setSelectedReport(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-box"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: selectedReport.image_url ? '720px' : '480px' }}
+          >
             <div className="modal-header">
-              <h3>Chi tiết điểm nóng</h3>
+              <div className="modal-header-left">
+                <h3>Chi tiết điểm nóng</h3>
+                {getEcoBadge(selectedReport.ecoscore)}
+              </div>
               <button className="close-btn" onClick={() => setSelectedReport(null)}>
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="modal-img-col">
-                <img src={`${BASE_URL}${selectedReport.image_url}`} alt="Hiện trường" />
-              </div>
-              <div className="modal-info-col">
-                <div style={{ marginBottom: 12 }}>{getEcoBadge(selectedReport.ecoscore)}</div>
-                <p>
-                  <strong>Người báo cáo:</strong> {selectedReport.reporter_name || 'Học sinh ẩn danh'}
-                  {selectedReport.reporter_phone && selectedReport.reporter_phone !== 'Không rõ'
-                    ? ` - SĐT: 0${selectedReport.reporter_phone}`
-                    : ''}
-                </p>
-                <p><strong>Loại vấn đề:</strong> {selectedReport.issue_group}</p>
-                <p><strong>Chi tiết:</strong> {selectedReport.issue_detail}</p>
-                <p><strong>Ghi chú từ học sinh:</strong> {selectedReport.description || 'Không có'}</p>
-                <div className="ai-suggestion-box">
-                  <strong>🤖 Đề xuất xử lý:</strong>
-                  <p>{selectedReport.ai_suggestion || 'Chưa có gợi ý.'}</p>
+
+            <div className={`modal-body ${!selectedReport.image_url ? 'no-image-layout' : ''}`}>
+              {/* Cột ảnh nếu có */}
+              {selectedReport.image_url && (
+                <div className="modal-img-col">
+                  <img src={`${BASE_URL}${selectedReport.image_url}`} alt="Hiện trường" />
                 </div>
-                <div style={{ marginTop: 20 }}>
+              )}
+
+              {/* Cột thông tin được phân khối rõ ràng */}
+              <div className="modal-info-col">
+                <div className="info-row">
+                  <span className="info-label">Người báo cáo</span>
+                  <span className="info-val highlight">
+                    {selectedReport.reporter_name || 'Học sinh ẩn danh'}
+                    {selectedReport.reporter_phone && selectedReport.reporter_phone !== 'Không rõ'
+                      ? ` (0${selectedReport.reporter_phone})`
+                      : ''}
+                  </span>
+                </div>
+
+                <div className="info-row">
+                  <span className="info-label">Vấn đề</span>
+                  <span className="info-val">{selectedReport.issue_group} &bull; {selectedReport.issue_detail}</span>
+                </div>
+
+                <div className="info-row">
+                  <span className="info-label">Ghi chú</span>
+                  <span className="info-val text-muted">{selectedReport.description || 'Không có ghi chú'}</span>
+                </div>
+
+                {/* Hộp đề xuất AI */}
+                <div className="ai-suggestion-box">
+                  <div className="ai-title">🤖 Đề xuất xử lý</div>
+                  <p>{selectedReport.ai_suggestion || 'Cần kiểm tra trực tiếp hiện trường.'}</p>
+                </div>
+
+                <div className="modal-action-wrap">
                   <button
                     className={`btn-toggle-large ${selectedReport.status === 'resolved' ? 'resolved' : 'pending'}`}
                     onClick={() => toggleStatus(selectedReport.id)}
                   >
-                    {selectedReport.status === 'resolved'
-                      ? 'Đã giải quyết xong'
-                      : 'Đã xử lý xong'}
+                    {selectedReport.status === 'resolved' ? 'Mở lại sự cố' : 'Đã xử lý xong'}
                   </button>
                 </div>
               </div>

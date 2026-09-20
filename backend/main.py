@@ -162,57 +162,6 @@ def analyze_image_with_gemini(image_path: str, user_description: str = ""):
             "ecoscore": 1,
             "ai_suggestion": "Cần nhân viên kiểm tra"
         }
-@app.post("/api/reports")
-async def create_report(
-    coord_x: float = Form(...),
-    coord_y: float = Form(...),
-    description: str = Form(""),
-    reporter_name: str = Form("Học sinh ẩn danh"),
-    reporter_phone: str = Form(""),
-    image: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Tệp phải là hình ảnh.")
-
-    file_ext = os.path.splitext(image.filename)[1] or ".jpg"
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
-
-    # GỌI GEMINI PHÂN TÍCH ẢNH TỰ ĐỘNG
-    ai_result = analyze_image_with_gemini(file_path, description)
-
-    # 2. Khởi tạo đối tượng SQLAlchemy Model thay vì dict thường
-    new_report = models.Report(
-        id=str(uuid.uuid4()),
-        coord_x=coord_x,
-        coord_y=coord_y,
-        description=description,
-        reporter_name=reporter_name,
-        reporter_phone=reporter_phone,
-        image_url=f"/uploads/{unique_filename}",
-        status="pending",
-        issue_group=ai_result.get("issue_group"),
-        issue_detail=ai_result.get("issue_detail"),
-        ecoscore=ai_result.get("ecoscore"),
-        ai_suggestion=ai_result.get("ai_suggestion")
-    )
-
-    # 3. Lưu trực tiếp vào PostgreSQL
-    db.add(new_report)
-    db.commit()
-    db.refresh(new_report)
-
-    print(f"[+] Báo cáo mới đã xử lý AI: {new_report.issue_group} - Điểm: {new_report.ecoscore}")
-
-    return {
-        "message": "Báo cáo thành công!",
-        "data": new_report
-    }
-
 @app.get("/api/reports")
 def get_reports(db: Session = Depends(get_db)):
     return db.query(models.Report).order_by(models.Report.created_at.desc()).all()
@@ -372,14 +321,14 @@ async def create_report(
     image: Optional[UploadFile] = File(None),  # Cho phép không có ảnh
     db: Session = Depends(get_db)
 ):
-    image_url = "/uploads/default-report.png" # Ảnh mặc định khi báo cáo từ máy tính
+    image_url = ""  # Không có ảnh thì để None, không gán ảnh mặc định
     issue_group = "Báo cáo từ máy tính trường"
     issue_detail = description or "Học sinh báo cáo không kèm ảnh"
     ecoscore = 2
     ai_suggestion = "Cần bảo vệ hoặc lao công đến kiểm tra trực tiếp hiện trường."
 
-    # Nếu có ảnh (từ điện thoại gửi lên) thì mới phân tích Gemini
-    if image and image.filename:
+    # Chỉ khi học sinh có gửi ảnh thật lên (từ điện thoại) thì mới lưu và phân tích Gemini
+    if image and hasattr(image, "filename") and image.filename:
         file_ext = os.path.splitext(image.filename)[1] or ".jpg"
         unique_filename = f"{uuid.uuid4()}{file_ext}"
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
@@ -403,7 +352,7 @@ async def create_report(
         description=description,
         reporter_name=reporter_name,
         reporter_phone=reporter_phone,
-        image_url=image_url,
+        image_url=image_url,  # Sẽ lưu null/None vào database nếu không có ảnh
         status="pending",
         issue_group=issue_group,
         issue_detail=issue_detail,

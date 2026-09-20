@@ -236,7 +236,7 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,59 +245,173 @@
 }
 
 .modal-box {
-  background: white;
-  width: 100%;
-  max-width: 850px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  width: 95%;
+  max-width: 820px;
   max-height: 90vh;
-  border-radius: 12px;
   overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  transition: all 0.25s ease;
 }
 
 .modal-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.close-btn { background: none; border: none; cursor: pointer; color: #666; }
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-header-left h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+}
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
 
 .modal-body {
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  display: flex;
   gap: 20px;
+  padding: 20px;
+}
+
+.modal-body.no-image-layout {
+  padding: 24px 20px;
+}
+
+.modal-img-col {
+  flex: 0 0 360px;
+  max-width: 360px;
 }
 
 .modal-img-col img {
   width: 100%;
-  border-radius: 8px;
+  height: 100%;
+  min-height: 280px; /* Đảm bảo chiều cao tối thiểu */
+  max-height: 360px; /* Tăng từ 240px lên 360px */
   object-fit: cover;
-  max-height: 350px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
 }
 
-.ai-suggestion-box {
-  margin-top: 14px;
-  background: #f1f8e9;
-  border-left: 4px solid #33691e;
-  padding: 12px;
+.modal-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Các dòng thông tin label - value */
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #71717a;
+  font-weight: 600;
+}
+
+.info-val {
+  font-size: 0.95rem;
+  color: #e4e4e7;
+  font-weight: 500;
+}
+
+.info-val.highlight {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.info-val.text-muted {
+  color: #a1a1aa;
   font-size: 0.9rem;
-  border-radius: 0 6px 6px 0;
+}
+
+/* Hộp đề xuất AI giao diện tối */
+.ai-suggestion-box {
+  background: rgba(39, 39, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #22c55e;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 4px;
+}
+
+.ai-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #86efac;
+  margin-bottom: 4px;
+}
+
+.ai-suggestion-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #d4d4d8;
+  line-height: 1.4;
+}
+
+/* Nút bấm Đã xử lý / Mở lại */
+.modal-action-wrap {
+  margin-top: 8px;
 }
 
 .btn-toggle-large {
   width: 100%;
-  padding: 14px;
-  border-radius: 8px;
-  font-weight: bold;
-  border: none;
+  padding: 11px 0;
   font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
-.btn-toggle-large.pending { background: #2e7d32; color: white; }
-.btn-toggle-large.resolved { background: #616161; color: white; }
+
+.btn-toggle-large.pending {
+  background: #16a34a;
+  color: #ffffff;
+}
+.btn-toggle-large.pending:hover {
+  background: #15803d;
+}
+
+.btn-toggle-large.resolved {
+  background: #27272a;
+  color: #a1a1aa;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.btn-toggle-large.resolved:hover {
+  background: #3f3f46;
+  color: #ffffff;
+}
 
 /* ============================================================ */
 /* MEDIA QUERY: RESPONSIVE CHO ĐIỆN THOẠI VÀ MÀN HÌNH NHỎ (< 992px) */
@@ -385,4 +499,29 @@
 
 .btn-logout:hover {
   background-color: #b71c1c;
+}
+
+@media screen and (max-width: 768px) {
+  .modal-body {
+    flex-direction: column !important; /* Xếp ảnh lên trên, thông tin xuống dưới */
+    gap: 16px !important;
+    padding: 16px !important;
+  }
+
+  .modal-img-col {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important; /* Mở rộng ảnh phủ đều chiều ngang điện thoại */
+  }
+
+  .modal-img-col img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 220px !important; /* Chiều cao vừa vặn cho màn hình điện thoại */
+    object-fit: cover !important;
+  }
+
+  .modal-info-col {
+    width: 100% !important;
+  }
 }
