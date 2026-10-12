@@ -14,7 +14,6 @@ export default function Auth() {
   const staffRoles = ['guard', 'admin', 'teacher'];
   const navigate = useNavigate();
 
-  // 1. Xử lý Đăng nhập Học sinh (Chỉ cần mã số)
   const handleStudentSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -37,7 +36,6 @@ export default function Auth() {
     }
   };
 
-  // 2. Xử lý Đăng nhập Cán bộ / Bảo vệ (SĐT + Mật khẩu)
   const handleStaffSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -72,7 +70,6 @@ export default function Auth() {
           <h2>AI GreenMap</h2>
         </div>
 
-        {/* CỤM CHUYỂN ĐỔI 2 TAB */}
         <div className="auth-tabs">
           <button
             type="button"
@@ -94,7 +91,6 @@ export default function Auth() {
 
         {errorMsg && <div className="auth-error-badge">{errorMsg}</div>}
 
-        {/* TAB 1: FORM HỌC SINH (CHỈ 1 Ô NHẬP DUY NHẤT) */}
         {activeTab === 'student' ? (
           <form onSubmit={handleStudentSubmit} className="auth-form">
             <div className="input-group">
@@ -114,7 +110,6 @@ export default function Auth() {
             </button>
           </form>
         ) : (
-          /* TAB 2: FORM BẢO VỆ / CÁN BỘ (GIỮ NGUYÊN FORM CŨ) */
           <form onSubmit={handleStaffSubmit} className="auth-form">
             <div className="input-group">
               <label><Phone size={16} /> Số điện thoại</label>

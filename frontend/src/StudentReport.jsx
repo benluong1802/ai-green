@@ -4,17 +4,24 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, MapPin, Send, ArrowRight, ArrowLeft, LogOut } from 'lucide-react';
 import './App.css';
 
+const ISSUE_CATEGORIES = [
+  { id: 'waste', label: '🗑️ Rác', name: 'Rác thải' },
+  { id: 'water', label: '🚰 Rò rỉ nước', name: 'Rò rỉ nước' },
+  { id: 'power', label: '💡 Lãng phí điện', name: 'Lãng phí điện' },
+  { id: 'clean', label: '🧹 Vệ sinh', name: 'Vệ sinh' },
+  { id: 'heat', label: '🌡️ Khu vực nóng', name: 'Khu vực nóng' },
+  { id: 'other', label: '🔔 Lựa chọn khác', name: 'Khác' },
+];
+
 export default function App() {
   const navigate = useNavigate();
-  // Kiểm tra nếu là máy tính / màn hình rộng > 768px
   const isDesktop = window.innerWidth > 768;
-
-  // Máy tính thì nhảy thẳng vào bước 2, điện thoại thì bắt đầu từ bước 1
   const [step, setStep] = useState(isDesktop ? 2 : 1);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [pin, setPin] = useState(null);
-  const [description, setDescription] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(ISSUE_CATEGORIES[0].name);
+  const [otherText, setOtherText] = useState('');
   const [loading, setLoading] = useState(false);
   const mapRef = useRef(null);
 
@@ -40,22 +47,23 @@ export default function App() {
       alert('Vui lòng chạm vào sơ đồ để chọn vị trí sự cố!');
       return;
     }
-
-    if (isDesktop && !description.trim()) {
-      alert('Vui lòng nhập mô tả sự cố!');
+    if (selectedCategory === 'Khác' && !otherText.trim()) {
+      alert('Vui lòng nhập chi tiết sự cố bạn muốn báo cáo!');
       return;
     }
+
+    const finalDescription = selectedCategory === 'Khác' ? otherText.trim() : selectedCategory;
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     setLoading(true);
 
     const formData = new FormData();
-    // Chỉ đính kèm file ảnh nếu có (học sinh dùng điện thoại chụp)
     if (image) {
       formData.append('image', image);
     }
     formData.append('coord_x', pin.x.toFixed(2));
     formData.append('coord_y', pin.y.toFixed(2));
-    formData.append('description', description);
+    formData.append('description', finalDescription);
+    formData.append('issue_category', selectedCategory);
     formData.append('reporter_name', `${currentUser.full_name || 'Học sinh'} (${currentUser.class_name || '8/6'})`);
     formData.append('reporter_phone', currentUser.phone || 'Học sinh');
 
@@ -65,22 +73,22 @@ export default function App() {
       });
       alert('Đã gửi báo cáo thành công!');
 
-      // Nếu dùng trên máy tính công cộng: Tự động đăng xuất về trang đăng nhập
       if (isDesktop) {
         localStorage.removeItem('user');
         navigate('/login');
         return;
       }
 
-      // Nếu dùng trên điện thoại cá nhân: Reset form về ban đầu
       setImage(null);
       setPreview(null);
       setPin(null);
-      setDescription('');
+      setSelectedCategory(ISSUE_CATEGORIES[0].name);
+      setOtherText('');
       setStep(1);
     } catch (err) {
       console.error(err);
-      alert('Chưa kết nối được Server backend.');
+      const detail = err.response?.data?.detail;
+      alert(detail || 'Chưa kết nối được Server backend.');
     } finally {
       setLoading(false);
     }
@@ -90,6 +98,8 @@ export default function App() {
     localStorage.removeItem('user');
     navigate('/login');
   };
+
+  const isSubmitDisabled = loading || !pin || (selectedCategory === 'Khác' && !otherText.trim());
 
   return (
     <div className="mobile-container">
@@ -156,28 +166,56 @@ export default function App() {
             </div>
           </div>
 
-          <div className="form-group">
-            <label>
-              {isDesktop ? (
-                <>
-                  Mô tả sự cố <span style={{ color: '#ef4444' }}>(Bắt buộc)</span>
-                </>
-              ) : (
-                'Ghi chú thêm (không bắt buộc)'
-              )}
+          <div className="form-group" style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#e4e4e7', marginBottom: 8, display: 'block' }}>
+              Loại vấn đề
             </label>
-            <input
-              type="text"
-              className="text-input"
-              required={isDesktop} // Tự động bật required nếu là máy tính
-              placeholder={
-                isDesktop
-                  ? 'Ví dụ: Thùng rác trước lớp 8/6 bị tràn, vòi nước rò rỉ...'
-                  : 'Ví dụ: Rác nhiều sau giờ ra chơi...'
-              }
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 6
+            }}>
+              {ISSUE_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.name;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.name)}
+                    style={{
+                      padding: '9px 6px',
+                      borderRadius: 8,
+                      border: isSelected ? '2px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.1)',
+                      backgroundColor: isSelected ? 'rgba(34, 197, 94, 0.2)' : '#27272a',
+                      color: isSelected ? '#4ade80' : '#d4d4d8',
+                      fontSize: '0.82rem',
+                      fontWeight: isSelected ? 600 : 500,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedCategory === 'Khác' && (
+              <input
+                type="text"
+                className="text-input"
+                placeholder="Nhập chi tiết vấn đề khác..."
+                value={otherText}
+                onChange={(e) => setOtherText(e.target.value)}
+                style={{ marginTop: 8 }}
+                autoFocus
+              />
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
@@ -193,7 +231,7 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  whiteSpace: 'nowrap', // Ngăn chữ rớt dòng làm phình to nút
+                  whiteSpace: 'nowrap',
                   fontSize: '0.9rem',
                   padding: '12px 8px',
                   opacity: loading ? 0.6 : 1,
@@ -227,7 +265,7 @@ export default function App() {
             <button
               type="submit"
               className="submit-btn"
-              disabled={loading || !pin || (isDesktop && !description.trim())}
+              disabled={isSubmitDisabled}
               style={{
                 flex: 1.6,
                 display: 'flex',
@@ -236,8 +274,8 @@ export default function App() {
                 whiteSpace: 'nowrap',
                 fontSize: '0.9rem',
                 padding: '12px 8px',
-                opacity: (loading || !pin || (isDesktop && !description.trim())) ? 0.6 : 1,
-                cursor: (loading || !pin || (isDesktop && !description.trim())) ? 'not-allowed' : 'pointer'
+                opacity: isSubmitDisabled ? 0.6 : 1,
+                cursor: isSubmitDisabled ? 'not-allowed' : 'pointer'
               }}
             >
               <Send size={16} style={{ marginRight: 6, flexShrink: 0 }} />

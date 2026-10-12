@@ -37,8 +37,8 @@ class Student(Base):
     __tablename__ = "students"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_code = Column(String, unique=True, index=True, nullable=False) # Mã định danh Bộ GD&ĐT
-    full_name = Column(String, nullable=False)                             # Họ tên
-    gender = Column(String, nullable=True)                                 # Giới tính (Nam / Nữ)
-    phone = Column(String, nullable=True)                                  # SĐT liên hệ (có thể để trống)
-    class_name = Column(String, nullable=False)                            # Lớp Học (VD: "8/6")
+    student_code = Column(String, unique=True, index=True, nullable=False)
+    full_name = Column(String, nullable=False)
+    gender = Column(String, nullable=True) 
+    phone = Column(String, nullable=True)
+    class_name = Column(String, nullable=False)

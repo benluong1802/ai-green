@@ -62,24 +62,41 @@ export default function Dashboard() {
     localStorage.removeItem('user');
     navigate('/login');
   };
-  const toggleStatus = async (id) => {
+  const handleUpdateStatus = async (reportId, newStatus) => {
+    let confirmMsg = '';
+    if (newStatus === 'rejected') {
+      confirmMsg = 'Xác nhận sự cố này là KHÔNG HỢP LỆ (báo cáo sai thực tế)?';
+    } else if (newStatus === 'resolved') {
+      confirmMsg = 'Xác nhận sự cố này ĐÃ ĐƯỢC XỬ LÝ xong?';
+    } else {
+      confirmMsg = 'Xác nhận MỞ LẠI sự cố này?';
+    }
+
+    if (!window.confirm(confirmMsg)) return;
+
     try {
-      await api.patch(`/reports/${id}/status`);
-      fetchReports();
-      if (selectedReport && selectedReport.id === id) {
-        setSelectedReport((prev) => ({
-          ...prev,
-          status: prev.status === 'pending' ? 'resolved' : 'pending',
-        }));
+      await api.patch(`/reports/${reportId}/status`, { status: newStatus });
+      
+      let successMsg = 'Đã xác nhận xử lý thành công!';
+      if (newStatus === 'rejected') {
+        successMsg = 'Đã đánh dấu: Báo cáo không hợp lệ!';
+      } else if (newStatus === 'pending') {
+        successMsg = 'Đã mở lại sự cố thành công!';
       }
+      alert(successMsg);
+
+      setSelectedReport(null);
+      fetchReports();
     } catch (err) {
-      alert('Không thể đổi trạng thái!');
+      console.error(err);
+      alert('Lỗi cập nhật trạng thái báo cáo.');
     }
   };
 
   const total = reports.length;
   const pending = reports.filter((r) => r.status === 'pending').length;
   const resolved = reports.filter((r) => r.status === 'resolved').length;
+  const rejected = reports.filter((r) => r.status === 'rejected').length; // Báo cáo không hợp lệ[cite: 4]
   const highPriority = reports.filter((r) => r.ecoscore === 3 && r.status === 'pending').length;
 
   const filteredReports = reports
@@ -158,9 +175,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KHÔNG GIAN BẢN ĐỒ VÀ DANH SÁCH */}
       <div className="main-content-grid">
-        {/* BẢN ĐỒ KHUÔN VIÊN TRƯỜNG */}
         <div className="map-section">
           <h3>Bản đồ điểm nóng</h3>
           <div className="dashboard-map-wrapper">
@@ -185,29 +200,34 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* DANH SÁCH BÁO CÁO THEO TAB */}
         <div className="reports-list-section">
           <div className="tab-buttons-container">
             <button
               className={`tab-btn ${activeTab === 'pending' ? 'tab-btn-active' : ''}`}
               onClick={() => setActiveTab('pending')}
             >
-              ⏳Xử lý({pending})
+              ⏳ Xử lý ({pending})
             </button>
             <button
               className={`tab-btn ${activeTab === 'resolved' ? 'tab-btn-active' : ''}`}
               onClick={() => setActiveTab('resolved')}
             >
-              ✅ Xong({resolved})
+              ✅ Đã Xong ({resolved})
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'rejected' ? 'tab-btn-active' : ''}`}
+              onClick={() => setActiveTab('rejected')}
+            >
+              ❌ Từ chối ({rejected})
             </button>
           </div>
 
           <div className="cards-scroll-container">
             {filteredReports.length === 0 ? (
               <p style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>
-                {activeTab === 'pending'
-                  ? 'Tuyệt vời! Không còn sự cố nào tồn đọng.'
-                  : 'Chưa có sự cố nào hoàn thành.'}
+                {activeTab === 'pending' && 'Tuyệt vời! Không còn sự cố nào tồn đọng.'}
+                {activeTab === 'resolved' && 'Chưa có sự cố nào hoàn thành.'}
+                {activeTab === 'rejected' && 'Không có báo cáo nào bị từ chối.'}
               </p>
             ) : (
               filteredReports.map((r) => (
@@ -218,7 +238,9 @@ export default function Dashboard() {
                   <div className="report-item-header">
                     {getEcoBadge(r.ecoscore)}
                     <span className={`status-pill ${r.status}`}>
-                      {r.status === 'resolved' ? 'Đã xong' : 'Chờ xử lý'}
+                      {r.status === 'resolved' && 'Đã xong'}
+                      {r.status === 'pending' && 'Chờ xử lý'}
+                      {r.status === 'rejected' && 'Từ chối'}
                     </span>
                   </div>
 
@@ -232,22 +254,51 @@ export default function Dashboard() {
                           const [datePart, timePart] = r.created_at.split('T');
                           const [year, month, day] = datePart.split('-');
                           const time = timePart ? timePart.split('.')[0] : '';
-                          return `${time} - ${day}/${month}/${year}`;
+                          return `${time} ${day}/${month}/${year}`;
                         })()
                       }
                     </p>
                   </div>
 
-                  <div className="card-actions">
+                  <div className="card-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* Nút Chi tiết bên trái */}
                     <button className="btn-view" onClick={() => setSelectedReport(r)}>
-                      <Eye size={14} /> Chi tiết
+                      Chi tiết
                     </button>
-                    <button
-                      className={`btn-action-status ${r.status === 'resolved' ? 'btn-reopen' : 'btn-resolve'}`}
-                      onClick={() => toggleStatus(r.id)}
-                    >
-                      {r.status === 'resolved' ? 'Mở lại' : 'Đã Xong'}
-                    </button>
+
+                    {r.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: '8px' }}>
+                        <button
+                          className="btn-action-status btn-resolve"
+                          onClick={() => handleUpdateStatus(r.id, 'resolved')}
+                        >
+                          Đã Xong
+                        </button>
+                        <button
+                          className="btn-action-status"
+                          style={{
+                            backgroundColor: '#dc2626',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            fontWeight: 600
+                          }}
+                          onClick={() => handleUpdateStatus(r.id, 'rejected')}
+                        >
+                          Từ Chối
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-action-status btn-reopen"
+                        onClick={() => handleUpdateStatus(r.id, 'pending')}
+                      >
+                        Mở lại
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -256,7 +307,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* POPUP CHI TIẾT SỰ CỐ */}
       {selectedReport && (
         <div className="modal-backdrop" onClick={() => setSelectedReport(null)}>
           <div
@@ -275,21 +325,19 @@ export default function Dashboard() {
             </div>
 
             <div className={`modal-body ${!selectedReport.image_url ? 'no-image-layout' : ''}`}>
-              {/* Cột ảnh nếu có */}
               {selectedReport.image_url && (
                 <div className="modal-img-col">
                   <img src={`${BASE_URL}${selectedReport.image_url}`} alt="Hiện trường" />
                 </div>
               )}
 
-              {/* Cột thông tin được phân khối rõ ràng */}
               <div className="modal-info-col">
                 <div className="info-row">
                   <span className="info-label">Người báo cáo</span>
                   <span className="info-val highlight">
                     {selectedReport.reporter_name || 'Học sinh ẩn danh'}
                     {selectedReport.reporter_phone && selectedReport.reporter_phone !== 'Không rõ'
-                      ? ` (0${selectedReport.reporter_phone})`
+                      ? ` (SDT:0${selectedReport.reporter_phone})`
                       : ''}
                   </span>
                 </div>
@@ -304,19 +352,58 @@ export default function Dashboard() {
                   <span className="info-val text-muted">{selectedReport.description || 'Không có ghi chú'}</span>
                 </div>
 
-                {/* Hộp đề xuất AI */}
                 <div className="ai-suggestion-box">
                   <div className="ai-title">🤖 Đề xuất xử lý</div>
                   <p>{selectedReport.ai_suggestion || 'Cần kiểm tra trực tiếp hiện trường.'}</p>
                 </div>
 
-                <div className="modal-action-wrap">
-                  <button
-                    className={`btn-toggle-large ${selectedReport.status === 'resolved' ? 'resolved' : 'pending'}`}
-                    onClick={() => toggleStatus(selectedReport.id)}
-                  >
-                    {selectedReport.status === 'resolved' ? 'Mở lại sự cố' : 'Đã xử lý xong'}
-                  </button>
+                <div className="modal-action-wrap" style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                  {selectedReport.status !== 'pending' ? (
+                    <button
+                      type="button"
+                      className="btn-toggle-large"
+                      style={{ backgroundColor: '#4b5563', color: '#fff', flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      onClick={() => handleUpdateStatus(selectedReport.id, 'pending')}
+                    >
+                      🔄 Mở lại sự cố
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          backgroundColor: '#16a34a',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleUpdateStatus(selectedReport.id, 'resolved')}
+                      >
+                        ✅ Đã xử lý
+                      </button>
+
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          backgroundColor: '#dc2626',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleUpdateStatus(selectedReport.id, 'rejected')}
+                      >
+                        ❌ Từ Chối
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -349,7 +436,6 @@ export default function Dashboard() {
               color: '#1f2937'
             }}
           >
-            {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Xuất báo cáo Excel</h3>
               <button
@@ -364,7 +450,6 @@ export default function Dashboard() {
               Chọn khoảng thời gian báo cáo cần kết xuất dữ liệu:
             </p>
 
-            {/* Danh sách Radio Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
                 <input
@@ -403,7 +488,6 @@ export default function Dashboard() {
               </label>
             </div>
 
-            {/* Modal Actions */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => setShowExportModal(false)}
