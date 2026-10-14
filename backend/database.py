@@ -1,3 +1,6 @@
+# Cấu hình kết nối cơ sở dữ liệu (PostgreSQL) qua SQLAlchemy 
+# Cung cấp hàm get_db() quản lý đóng/mở session tự động cho từng request
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 import os

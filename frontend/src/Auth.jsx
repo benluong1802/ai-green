@@ -1,3 +1,6 @@
+// Cấu hình điều hướng (routing) và phân quyền truy cập cho ứng dụng.
+// Chặn người dùng chưa đăng nhập và giới hạn trang Dashboard theo vai trò (role)
+
 import React, { useState } from 'react';
 import api from './api';
 import { useNavigate } from 'react-router-dom';

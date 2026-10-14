@@ -1,3 +1,5 @@
+# Định nghĩa các bảng cơ sở dữ liệu bằng SQLAlchemy gồm User, Report và Student
+
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo

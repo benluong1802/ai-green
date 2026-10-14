@@ -1,3 +1,6 @@
+# Dockerfile đóng gói ứng dụng FastAPI: cài đặt thư viện hệ thống và Python
+# Sao chép mã nguồn và khởi chạy Uvicorn server ở cổng 8000
+
 FROM python:3.10-slim
 
 WORKDIR /app

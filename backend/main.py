@@ -58,6 +58,7 @@ class StaffCreateRequest(BaseModel):
 class LoginRequest(BaseModel):
     phone: str
     password: str
+
 @app.on_event("startup")
 def create_initial_guard_account():
     db = SessionLocal()
@@ -79,6 +80,8 @@ def create_initial_guard_account():
         db.rollback()
     finally:
         db.close()
+
+# API đăng ký tài khoản mới cho học sinh (Không dùng nữa)
 @app.post("/api/auth/register-student")
 def register_student(req: StudentRegisterRequest, db: Session = Depends(get_db)):
     if not req.phone or len(req.phone) < 10:
@@ -108,6 +111,8 @@ def register_student(req: StudentRegisterRequest, db: Session = Depends(get_db))
             "role": new_student.role
         }
     }
+
+# API đăng nhập hệ thống bằng số điện thoại và mật khẩu (Không dùng nữa)
 @app.post("/api/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(
@@ -127,6 +132,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
             "role": user.role
         }
     }    
+
+# Hàm gửi ảnh và mô tả sang mô hình AI Gemini để phân tích sự cố và đề xuất xử lý
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")   
 def analyze_image_with_gemini(image_path: str, selected_category: str = "", user_description: str = ""):
     claimed_issue = user_description if selected_category == "Khác" else selected_category
@@ -186,13 +193,14 @@ def analyze_image_with_gemini(image_path: str, selected_category: str = "", user
             "ai_suggestion": "Cần nhân viên kiểm tra"
         }
 
+# Lấy danh sách toàn bộ các báo cáo sự cố để hiển thị lên bản đồ và bảng điều khiển
 @app.get("/api/reports")
 def get_reports(db: Session = Depends(get_db)):
     return db.query(models.Report).order_by(models.Report.created_at.desc()).all()
 
+# Cập nhật trạng thái của một báo cáo (pending: Chờ xử lý, resolved: Đã xong, rejected: Từ chối)
 class StatusUpdateRequest(BaseModel):
     status: str
-
 @app.patch("/api/reports/{report_id}/status")
 def update_report_status(
     report_id: str, 
@@ -211,11 +219,15 @@ def update_report_status(
     db.refresh(report)
 
     return {"message": "Cập nhật thành công!", "data": report}
+
+# Xóa toàn bộ dữ liệu báo cáo trong cơ sở dữ liệu
 @app.delete("/api/reports/reset-all")
 def reset_database(db: Session = Depends(get_db)):
     db.query(models.Report).delete()
     db.commit()
     return {"message": "Đã xóa sạch toàn bộ dữ liệu báo cáo!"}
+
+# Tạo tài khoản nhân sự nội bộ mới
 @app.post("/api/auth/create-staff", status_code=status.HTTP_201_CREATED)
 def create_staff_account(payload: StaffCreateRequest, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.phone == payload.phone).first()
@@ -250,6 +262,7 @@ def create_staff_account(payload: StaffCreateRequest, db: Session = Depends(get_
 def get_now_vn():
     return datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).replace(tzinfo=None)
 
+# Xuất file excel
 @app.get("/api/reports/export-excel")
 def export_reports_excel(
     period: Literal["week", "month", "all"] = Query(
@@ -356,9 +369,10 @@ def export_reports_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers
     )
+
+# Đăng nhập nhanh bằng mã học sinh
 class StudentLoginRequest(BaseModel):
     student_code: str
-
 @app.post("/api/auth/student-login")
 def student_login(req: StudentLoginRequest, db: Session = Depends(get_db)):
     code = req.student_code.strip()
@@ -382,6 +396,7 @@ def student_login(req: StudentLoginRequest, db: Session = Depends(get_db)):
         }
     }
 
+# Học sinh báo cáo sự cố mới gồm ảnh, tọa độ bản đồ và gọi AI phân tích tự động
 DISTANCE_THRESHOLD = 3.0
 @app.post("/api/reports")
 async def create_report(

@@ -1,3 +1,5 @@
+# Danh sách các thư viện Python cần cài đặt cho dự án
+
 fastapi
 uvicorn[standard]
 sqlalchemy
